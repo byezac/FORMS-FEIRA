@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback - Estandes Feira Das Profissões - EETEPA - 2024</title>
+    <link rel="shortcut icon" href="img/eetepa-Xinguara-2.ico" type="image/x-icon">
+    <link rel="stylesheet" href="styles/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+ 
+
+    <header>
+        <div class="feira-title">
+            <h2>FEIRA DAS PROFISSÕES 2024</h2>
+        </div>
+        
+        <div class="image-gallery">
+            <div class="image-container">
+                <img src="img/EETEPA XINGUARA com letra.png" alt="Logo EETEP" class="gallery-image">
+            </div>
+            <div class="image-container">
+                <img src="img/governo do pará.png" alt="Logo Governo do Pará" class="gallery-image">
+            </div>
+            <div class="image-container">
+                <img src="img/sectet.png" alt="Logo SECTET" class="gallery-image">
+            </div>
+        </div>
+        <div class="header-content">
+            <h1>Sua opinião é importante para nós!</h1>
+            <p class="subtitle">Ajude-nos a melhorar compartilhando sua experiência com nossos estandes</p>
+        </div>
+    </header>
+
+  
+
+  
+
+    <main>
+        <form id="avaliacaoForm" action="submit_feedback.php" method="POST">
+            <div class="input-group">
+                <label for="nome">Nome (opcional)</label>
+                <input type="text" id="nome" name="nome" placeholder="Como podemos te chamar?">
+            </div>
+
+            <div class="form-group">
+                <label for="curso">Curso:</label>
+                <select id="curso" name="curso" required>
+                    <option value="">Selecione um curso</option>
+                    <option value="administracao">Administração</option>
+                    <option value="agricultura">Agricultura</option>
+                    <option value="agroindustria">Agroindústria</option>
+                    <option value="agropecuaria">Agropecuária</option>
+                    <option value="mineracao">Mineração</option>
+                    <option value="multimidia">Multimídia</option>
+                    <option value="recursoshumanos">Recursos Humanos</option>
+                    <option value="programacao">Programação</option>
+                </select>
+            </div>
+
+            <div class="rating-group">
+                <h3>Criatividade do Estande</h3>
+                <div class="stars" data-rating="criatividade">
+                    <input type="radio" name="criatividade" value="5" id="criatividade-5">
+                    <label for="criatividade-5">★</label>
+                    <input type="radio" name="criatividade" value="4" id="criatividade-4">
+                    <label for="criatividade-4">★</label>
+                    <input type="radio" name="criatividade" value="3" id="criatividade-3">
+                    <label for="criatividade-3">★</label>
+                    <input type="radio" name="criatividade" value="2" id="criatividade-2">
+                    <label for="criatividade-2">★</label>
+                    <input type="radio" name="criatividade" value="1" id="criatividade-1">
+                    <label for="criatividade-1">★</label>
+                </div>
+            </div>
+
+            <div class="rating-group">
+                <h3>Qualidade dos Projetos</h3>
+                <div class="stars" data-rating="projetos">
+                    <input type="radio" name="projetos" value="5" id="projetos-5">
+                    <label for="projetos-5">★</label>
+                    <input type="radio" name="projetos" value="4" id="projetos-4">
+                    <label for="projetos-4">★</label>
+                    <input type="radio" name="projetos" value="3" id="projetos-3">
+                    <label for="projetos-3">★</label>
+                    <input type="radio" name="projetos" value="2" id="projetos-2">
+                    <label for="projetos-2">★</label>
+                    <input type="radio" name="projetos" value="1" id="projetos-1">
+                    <label for="projetos-1">★</label>
+                </div>
+            </div>
+
+            <div class="rating-group">
+                <h3>Interatividade com os Visitantes</h3>
+                <div class="stars" data-rating="interatividade">
+                    <input type="radio" name="interatividade" value="5" id="interatividade-5">
+                    <label for="interatividade-5">★</label>
+                    <input type="radio" name="interatividade" value="4" id="interatividade-4">
+                    <label for="interatividade-4">★</label>
+                    <input type="radio" name="interatividade" value="3" id="interatividade-3">
+                    <label for="interatividade-3">★</label>
+                    <input type="radio" name="interatividade" value="2" id="interatividade-2">
+                    <label for="interatividade-2">★</label>
+                    <input type="radio" name="interatividade" value="1" id="interatividade-1">
+                    <label for="interatividade-1">★</label>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <label for="comentarios">Sua mensagem</label>
+                <textarea id="comentarios" name="comentarios" rows="4" 
+                    placeholder="Conte-nos o que achou e como podemos melhorar"></textarea>
+            </div>
+
+            <div class="button-group">
+                <button type="submit" class="submit-btn">Enviar Feedback</button>
+            </div>
+        </form>
+    </main>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    <script src="scripts/firebase-config.js"></script>
+    <script src="scripts/visitor-counter.js"></script>7
+    <script src="scripts/script.js"></script>
+
+    <footer>
+        <p>EETEPA - Feira das Profissões &copy; 2024</p>
+    </footer>
+     
+</body>
+</html>
