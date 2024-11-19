@@ -1,85 +1,45 @@
 class VisitorCounter {
     constructor() {
-        this.visitorRef = db.ref('visitors');
-        this.today = new Date().toISOString().split('T')[0];
+        this.visitorsRef = firebase.database().ref('visitors');
     }
 
-    // Incrementa o contador quando alguém acessa a página principal
-    async incrementVisitor() {
+    async incrementVisitorCount() {
         try {
-            console.log('Incrementando visitante para:', this.today);
-            const todayRef = this.visitorRef.child(this.today);
-            
-            await todayRef.transaction((currentCount) => {
-                console.log('Contagem atual:', currentCount);
-                return (currentCount || 0) + 1;
-            });
-            
-            console.log('Visitante incrementado com sucesso');
+            const snapshot = await this.visitorsRef.once('value');
+            const currentCount = parseInt(snapshot.val()) || 0;
+            await this.visitorsRef.set(currentCount + 1);
+            console.log('Contador incrementado:', currentCount + 1);
         } catch (error) {
             console.error('Erro ao incrementar visitantes:', error);
         }
     }
 
-    // Configura o contador no painel admin
+    async getVisitorCount() {
+        try {
+            const snapshot = await this.visitorsRef.once('value');
+            return parseInt(snapshot.val()) || 0;
+        } catch (error) {
+            console.error('Erro ao obter contagem de visitantes:', error);
+            return 0;
+        }
+    }
+
     setupAdminCounter() {
-        console.log('Configurando contador admin');
-        this.visitorRef.child(this.today).on('value', (snapshot) => {
-            const count = snapshot.val() || 0;
-            console.log('Contagem de visitantes hoje:', count);
-            const countElement = document.getElementById('visitorCount');
-            if (countElement) {
-                countElement.textContent = count;
+        this.visitorsRef.on('value', (snapshot) => {
+            const count = parseInt(snapshot.val()) || 0;
+            const visitorCountElement = document.querySelector('.visitor-count');
+            if (visitorCountElement) {
+                visitorCountElement.textContent = count.toString();
             }
         });
     }
-
-    async clearVisitors() {
-        try {
-            await this.visitorRef.remove();
-            const countElement = document.getElementById('visitorCount');
-            if (countElement) {
-                countElement.textContent = '0';
-            }
-            return true;
-        } catch (error) {
-            console.error('Erro ao limpar visitantes:', error);
-            return false;
-        }
-    }
 }
 
-// Função global para limpar visitantes
-async function limparVisitantes() {
-    if (!confirm('Tem certeza que deseja limpar todos os registros de visitantes? Esta ação não pode ser desfeita.')) {
-        return;
-    }
-
-    const counter = new VisitorCounter();
-    const success = await counter.clearVisitors();
-    
-    if (success) {
-        alert('Registros de visitantes removidos com sucesso!');
-    } else {
-        alert('Erro ao remover registros de visitantes. Verifique o console para mais detalhes.');
-    }
-}
-
-// Inicializar o contador
+// Inicializar o contador quando a página carregar
 document.addEventListener('DOMContentLoaded', () => {
     const counter = new VisitorCounter();
-    
-    // Se estiver na página principal, incrementa o contador
-    if (window.location.pathname.includes('index.html') || 
-        window.location.pathname === '/' || 
-        window.location.pathname === '') {
-        console.log('Página principal detectada, incrementando visitante');
-        counter.incrementVisitor();
-    }
-
-    // Se estiver na página admin, configura o display do contador
-    if (window.location.pathname.includes('admin.html')) {
-        console.log('Página admin detectada, configurando contador');
-        counter.setupAdminCounter();
+    // Incrementa apenas na página inicial
+    if (window.location.pathname.includes('index.html') || window.location.pathname === '/') {
+        counter.incrementVisitorCount();
     }
 }); 

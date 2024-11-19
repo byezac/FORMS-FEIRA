@@ -9,7 +9,14 @@ document.getElementById('avaliacaoForm').addEventListener('submit', function(e) 
         const curso = document.getElementById('curso').value;
 
         if (!criatividade || !projetos || !interatividade || !curso) {
-            alert('Por favor, preencha todos os campos obrigatórios antes de enviar.');
+            Swal.fire({
+                title: 'Atenção!',
+                text: 'Por favor, preencha todos os campos obrigatórios antes de enviar.',
+                icon: 'warning',
+                timer: 2000,
+                showConfirmButton: false,
+                position: 'center'
+            });
             return;
         }
 
@@ -30,16 +37,37 @@ document.getElementById('avaliacaoForm').addEventListener('submit', function(e) 
             .then(() => {
                 console.log('Salvo com sucesso!');
                 this.reset();
-                alert('Obrigado por sua avaliação!');
+                Swal.fire({
+                    title: 'Sucesso!',
+                    text: 'Avaliação enviada com sucesso!',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    position: 'center'
+                });
             })
             .catch(error => {
                 console.error('Erro ao salvar:', error);
-                alert('Erro ao salvar avaliação: ' + error.message);
+                Swal.fire({
+                    title: 'Erro!',
+                    text: 'Erro ao salvar avaliação: ' + error.message,
+                    icon: 'error',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    position: 'center'
+                });
             });
 
     } catch (error) {
         console.error('Erro no processo:', error);
-        alert('Erro no processo: ' + error.message);
+        Swal.fire({
+            title: 'Erro!',
+            text: 'Erro no processo: ' + error.message,
+            icon: 'error',
+            timer: 1500,
+            showConfirmButton: false,
+            position: 'center'
+        });
     }
 });
 

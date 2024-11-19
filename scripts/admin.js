@@ -5,10 +5,11 @@ class AvaliacoesManager {
         console.log('Iniciando AvaliacoesManager');
         this.avaliacoes = [];
         this.isMaster = sessionStorage.getItem('isMaster') === 'true';
-        this.setupEventListeners();
+        this.userCourse = sessionStorage.getItem('userCourse');
         this.carregarAvaliacoes();
         this.configurarBotoesAdmin();
         this.setCourseLogo();
+        this.setupEventListeners();
     }
 
     setCourseLogo() {
@@ -35,86 +36,132 @@ class AvaliacoesManager {
     configurarBotoesAdmin() {
         const limparAvaliacoesBtn = document.querySelector('.clear-btn');
         const limparVisitantesBtn = document.querySelector('.clear-btn.danger');
+        const exportBtn = document.querySelector('.export-btn');
+        const visitorsCard = document.querySelector('.visitors-card');
         
-        // Se não for master, esconde os botões de limpar
         if (!this.isMaster) {
             limparAvaliacoesBtn?.remove();
             limparVisitantesBtn?.remove();
+            visitorsCard?.remove();
+        } else {
+            if (visitorsCard) {
+                visitorsCard.style.display = 'block';
+                const counter = new VisitorCounter();
+                counter.setupAdminCounter();
+            }
         }
     }
 
-    setupEventListeners() {
-        // Pesquisa
-        document.getElementById('pesquisa').addEventListener('input', (e) => {
-            this.filtrarAvaliacoes(e.target.value);
-        });
+    async carregarAvaliacoes() {
+        try {
+            console.log('Carregando avaliações...');
+            console.log('Curso do usuário:', this.userCourse);
+            console.log('É master?', this.isMaster);
 
-        // Filtro por nota
-        document.getElementById('filtroNota').addEventListener('change', (e) => {
-            this.filtrarPorNota(e.target.value);
-        });
+            const snapshot = await db.ref('avaliacoes').once('value');
+            this.avaliacoes = [];
+
+            snapshot.forEach(childSnapshot => {
+                const avaliacao = childSnapshot.val();
+                console.log('Avaliação encontrada:', avaliacao);
+                
+                if (this.isMaster || avaliacao.curso === this.userCourse) {
+                    this.avaliacoes.push({
+                        id: childSnapshot.key,
+                        ...avaliacao
+                    });
+                }
+            });
+
+            console.log('Total de avaliações carregadas:', this.avaliacoes.length);
+            this.atualizarEstatisticas();
+            this.renderizarAvaliacoes();
+        } catch (error) {
+            console.error('Erro ao carregar avaliações:', error);
+        }
     }
 
-    calcularEstatisticas() {
-        if (this.avaliacoes.length === 0) return {
-            mediaGeral: 0,
-            total: 0,
-            mediaCriatividade: 0,
-            mediaProjetos: 0,
-            mediaInteratividade: 0
-        };
+    renderizarAvaliacoes() {
+        const container = document.querySelector('.avaliacoes-list');
+        if (!container) {
+            console.error('Container de avaliações não encontrado');
+            return;
+        }
 
-        let totalValido = 0;
-        const soma = this.avaliacoes.reduce((acc, av) => {
-            if (av.criatividade && av.projetos && av.interatividade) {
-                totalValido++;
-                return {
-                    criatividade: acc.criatividade + Number(av.criatividade),
-                    projetos: acc.projetos + Number(av.projetos),
-                    interatividade: acc.interatividade + Number(av.interatividade)
-                };
-            }
-            return acc;
-        }, { criatividade: 0, projetos: 0, interatividade: 0 });
+        container.innerHTML = '';
+        
+        this.avaliacoes
+            .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
+            .forEach(avaliacao => {
+                const avaliacaoElement = this.renderizarAvaliacao(avaliacao);
+                container.appendChild(avaliacaoElement);
+            });
+    }
 
-        if (totalValido === 0) return {
-            mediaGeral: 0,
-            total: 0,
-            mediaCriatividade: 0,
-            mediaProjetos: 0,
-            mediaInteratividade: 0
-        };
+    renderizarAvaliacao(avaliacao) {
+        const template = document.getElementById('avaliacao-template');
+        const clone = template.content.cloneNode(true);
+        
+        clone.querySelector('.nome-usuario').textContent = avaliacao.nome || 'Anônimo';
+        clone.querySelector('.data-avaliacao').textContent = this.formatarData(avaliacao.data);
+        
+        const cursoInfo = clone.querySelector('.curso-info');
+        if (this.isMaster && cursoInfo) {
+            cursoInfo.style.display = 'block';
+            const cursosMap = {
+                'administracao': 'Administração',
+                'agricultura': 'Agricultura',
+                'agroindustria': 'Agroindústria',
+                'agropecuaria': 'Agropecuária',
+                'mineracao': 'Mineração',
+                'multimidia': 'Multimídia',
+                'recursoshumanos': 'Recursos Humanos'
+            };
+            cursoInfo.textContent = `Curso: ${cursosMap[avaliacao.curso] || avaliacao.curso}`;
+        }
 
-        return {
-            mediaGeral: ((soma.criatividade + soma.projetos + soma.interatividade) / (totalValido * 3)).toFixed(1),
-            total: totalValido,
-            mediaCriatividade: (soma.criatividade / totalValido).toFixed(1),
-            mediaProjetos: (soma.projetos / totalValido).toFixed(1),
-            mediaInteratividade: (soma.interatividade / totalValido).toFixed(1)
-        };
+        const estrelas = clone.querySelectorAll('.estrelas');
+        estrelas[0].textContent = this.criarEstrelas(avaliacao.criatividade);
+        estrelas[1].textContent = this.criarEstrelas(avaliacao.projetos);
+        estrelas[2].textContent = this.criarEstrelas(avaliacao.interatividade);
+        
+        clone.querySelector('.comentario').textContent = avaliacao.comentarios || '';
+        
+        return clone;
     }
 
     atualizarEstatisticas() {
-        const stats = this.calcularEstatisticas();
+        if (this.avaliacoes.length === 0) return;
+
+        const calcularMedia = (criterio) => {
+            const soma = this.avaliacoes.reduce((acc, av) => acc + (av[criterio] || 0), 0);
+            return (soma / this.avaliacoes.length).toFixed(1);
+        };
+
+        document.querySelector('.stat-card:nth-child(1) .stat-number').textContent = 
+            calcularMedia('criatividade');
         
-        document.querySelector('.stat-card:nth-child(1) .stat-number').textContent = stats.mediaGeral;
-        document.querySelector('.stat-card:nth-child(2) .stat-number').textContent = stats.total;
-        document.querySelector('.stat-card:nth-child(3) .stat-number').textContent = stats.mediaCriatividade;
-        document.querySelector('.stat-card:nth-child(4) .stat-number').textContent = stats.mediaProjetos;
+        document.querySelector('.stat-card:nth-child(2) .stat-number').textContent = 
+            this.avaliacoes.length;
+        
+        document.querySelector('.stat-card:nth-child(3) .stat-number').textContent = 
+            calcularMedia('criatividade');
+        
+        document.querySelector('.stat-card:nth-child(4) .stat-number').textContent = 
+            calcularMedia('projetos');
+        
+        document.querySelector('.stat-card:nth-child(5) .stat-number').textContent = 
+            calcularMedia('interatividade');
     }
 
     criarEstrelas(nota) {
-        const numeroNota = parseInt(nota);
-        if (isNaN(numeroNota) || numeroNota < 1 || numeroNota > 5) {
-            return '☆☆☆☆☆';
-        }
-        const estrelasPreenchidas = '★'.repeat(numeroNota);
-        const estrelasVazias = '☆'.repeat(5 - numeroNota);
-        return estrelasPreenchidas + estrelasVazias;
+        return '★'.repeat(nota) + '☆'.repeat(5 - nota);
     }
 
-    formatarData(data) {
-        return new Date(data).toLocaleDateString('pt-BR', {
+    formatarData(dataString) {
+        if (!dataString) return '';
+        const data = new Date(dataString);
+        return data.toLocaleDateString('pt-BR', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
@@ -123,143 +170,95 @@ class AvaliacoesManager {
         });
     }
 
-    renderizarAvaliacoes(avaliacoesArray) {
-        const container = document.querySelector('.avaliacoes-list');
-        container.innerHTML = '';
-
-        avaliacoesArray.forEach(avaliacao => {
-            const avaliacaoElement = this.renderizarAvaliacao(avaliacao);
-            container.appendChild(avaliacaoElement);
-        });
-    }
-
-    filtrarAvaliacoes(termo) {
-        termo = termo.toLowerCase();
-        const filtradas = this.avaliacoes.filter(av => 
-            av.nome.toLowerCase().includes(termo) || 
-            av.comentarios.toLowerCase().includes(termo)
-        );
-        this.renderizarAvaliacoes(filtradas);
-    }
-
-    filtrarPorNota(nota) {
-        nota = parseInt(nota);
-        const filtradas = nota ? 
-            this.avaliacoes.filter(av => 
-                Number(av.criatividade) === nota || 
-                Number(av.projetos) === nota || 
-                Number(av.interatividade) === nota
-            ) : this.avaliacoes;
-        this.renderizarAvaliacoes(filtradas);
-    }
-
     renderizarDashboard() {
         this.atualizarEstatisticas();
         this.renderizarAvaliacoes(this.avaliacoes);
     }
 
-    carregarAvaliacoes() {
-        console.log('Tentando carregar avaliações');
-        const userCourse = sessionStorage.getItem('userCourse');
+    async limparAvaliacoes() {
         const isMaster = sessionStorage.getItem('isMaster') === 'true';
         
-        if (isMaster) {
-            // Se for master, carrega todas as avaliações
-            db.ref('avaliacoes').on('value', (snapshot) => {
-                console.log('Dados recebidos:', snapshot.val());
-                this.avaliacoes = [];
-                snapshot.forEach((child) => {
-                    this.avaliacoes.push({
-                        id: child.key,
-                        ...child.val()
-                    });
-                });
-                console.log('Avaliações processadas:', this.avaliacoes);
-                this.renderizarDashboard();
-            }, (error) => {
-                console.error('Erro ao carregar:', error);
+        if (!isMaster) {
+            Swal.fire({
+                title: 'Erro!',
+                text: 'Você não tem permissão para realizar esta ação.',
+                icon: 'error',
+                timer: 1500,
+                showConfirmButton: false,
+                position: 'center'
             });
-        } else {
-            // Se não for master, filtra pelo curso
-            db.ref('avaliacoes')
-                .orderByChild('curso')
-                .equalTo(userCourse)
-                .on('value', (snapshot) => {
-                    console.log('Dados recebidos:', snapshot.val());
-                    this.avaliacoes = [];
-                    snapshot.forEach((child) => {
-                        this.avaliacoes.push({
-                            id: child.key,
-                            ...child.val()
-                        });
-                    });
-                    console.log('Avaliações processadas:', this.avaliacoes);
-                    this.renderizarDashboard();
-                }, (error) => {
-                    console.error('Erro ao carregar:', error);
-                });
-        }
-    }
-
-    async limparAvaliacoes() {
-        if (!this.isMaster) {
-            alert('Você não tem permissão para realizar esta ação.');
-            return;
-        }
-
-        if (!confirm('Tem certeza que deseja limpar todas as avaliações? Esta ação não pode ser desfeita.')) {
             return;
         }
 
         try {
-            await db.ref('avaliacoes').remove();
-            alert('Todas as avaliações foram removidas com sucesso!');
-            this.renderizarDashboard();
+            const result = await Swal.fire({
+                title: 'Tem certeza?',
+                text: "Você irá apagar todas as avaliações! Esta ação não pode ser desfeita.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sim, apagar!',
+                cancelButtonText: 'Cancelar',
+                position: 'center',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                allowEnterKey: false
+            });
+
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Apagando...',
+                    text: 'Por favor, aguarde.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    allowEnterKey: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                await db.ref('avaliacoes').remove();
+                
+                Swal.fire({
+                    title: 'Sucesso!',
+                    text: 'Todas as avaliações foram removidas!',
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    position: 'center'
+                });
+
+                const avaliacoesContainer = document.querySelector('.avaliacoes-list');
+                if (avaliacoesContainer) {
+                    avaliacoesContainer.innerHTML = '';
+                }
+                
+                document.querySelector('.stat-card:nth-child(1) .stat-number').textContent = '0.0';
+                document.querySelector('.stat-card:nth-child(2) .stat-number').textContent = '0';
+                document.querySelector('.stat-card:nth-child(3) .stat-number').textContent = '0.0';
+                document.querySelector('.stat-card:nth-child(4) .stat-number').textContent = '0.0';
+                document.querySelector('.stat-card:nth-child(5) .stat-number').textContent = '0.0';
+            }
         } catch (error) {
             console.error('Erro ao limpar avaliações:', error);
-            alert('Erro ao limpar avaliações: ' + error.message);
+            Swal.fire({
+                title: 'Erro!',
+                text: 'Erro ao limpar avaliações: ' + error.message,
+                icon: 'error',
+                timer: 1500,
+                showConfirmButton: false,
+                position: 'center'
+            });
         }
-    }
-
-    renderizarAvaliacao(avaliacao) {
-        const template = document.getElementById('avaliacao-template');
-        const clone = template.content.cloneNode(true);
-        
-        // Dados básicos
-        clone.querySelector('.nome-usuario').textContent = avaliacao.nome || 'Anônimo';
-        clone.querySelector('.data-avaliacao').textContent = this.formatarData(avaliacao.data);
-        
-        // Renderizar estrelas para cada critério
-        const notasItems = clone.querySelectorAll('.nota-item .estrelas');
-        
-        // Criatividade
-        if (notasItems[0]) {
-            notasItems[0].textContent = this.criarEstrelas(avaliacao.criatividade);
-        }
-        
-        // Projetos
-        if (notasItems[1]) {
-            notasItems[1].textContent = this.criarEstrelas(avaliacao.projetos);
-        }
-        
-        // Interatividade
-        if (notasItems[2]) {
-            notasItems[2].textContent = this.criarEstrelas(avaliacao.interatividade);
-        }
-        
-        // Comentário
-        clone.querySelector('.comentario').textContent = avaliacao.comentarios || '';
-        
-        return clone;
     }
 }
 
-// Inicializar quando o documento estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
     window.avaliacoesManager = new AvaliacoesManager();
 });
 
-// Função global que será chamada pelo botão
 async function limparAvaliacoes() {
     const isMaster = sessionStorage.getItem('isMaster') === 'true';
     
@@ -273,50 +272,74 @@ async function limparAvaliacoes() {
     }
 }
 
-// Função para exportar CSV
 async function exportarCSV() {
     try {
-        // Busca os dados do Firebase
-        const snapshot = await db.ref('avaliacoes').once('value');
-        const avaliacoes = [];
-        
-        snapshot.forEach((child) => {
-            avaliacoes.push({
-                id: child.key,
-                ...child.val()
-            });
+        const result = await Swal.fire({
+            title: 'Exportar dados?',
+            text: "Você irá baixar todas as avaliações em formato Excel",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sim, exportar!',
+            cancelButtonText: 'Cancelar'
         });
 
-        // Cria o cabeçalho do CSV
-        let csv = 'Nome,Data,Criatividade,Projetos,Interatividade,Comentários\n';
-        
-        // Adiciona cada avaliação ao CSV
-        avaliacoes.forEach(av => {
-            const linha = [
-                `"${av.nome || 'Anônimo'}"`,
-                `"${new Date(av.data).toLocaleString('pt-BR')}"`,
-                av.criatividade,
-                av.projetos,
-                av.interatividade,
-                `"${(av.comentarios || '').replace(/"/g, '""')}"` // Escapa aspas duplas nos comentários
-            ].join(',');
+        if (result.isConfirmed) {
+            const snapshot = await db.ref('avaliacoes').once('value');
+            const avaliacoes = [];
             
-            csv += linha + '\n';
-        });
+            snapshot.forEach((child) => {
+                avaliacoes.push({
+                    id: child.key,
+                    ...child.val()
+                });
+            });
 
-        // Cria e faz o download do arquivo
-        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `avaliacoes_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+            let csv = 'Nome,Data,Criatividade,Projetos,Interatividade,Comentários\n';
+            
+            avaliacoes.forEach(av => {
+                const linha = [
+                    `"${av.nome || 'Anônimo'}"`,
+                    `"${new Date(av.data).toLocaleString('pt-BR')}"`,
+                    av.criatividade,
+                    av.projetos,
+                    av.interatividade,
+                    `"${(av.comentarios || '').replace(/"/g, '""')}"`
+                ].join(',');
+                
+                csv += linha + '\n';
+            });
+
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `avaliacoes_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            Swal.fire({
+                title: 'Sucesso!',
+                text: 'Arquivo exportado com sucesso!',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false,
+                position: 'center'
+            });
+        }
     } catch (error) {
         console.error('Erro ao exportar:', error);
-        alert('Erro ao exportar avaliações: ' + error.message);
+        Swal.fire({
+            title: 'Erro!',
+            text: 'Erro ao exportar arquivo: ' + error.message,
+            icon: 'error',
+            timer: 1500,
+            showConfirmButton: false,
+            position: 'center'
+        });
     }
 }
 
@@ -340,7 +363,6 @@ class ChatWidget {
             if (e.key === 'Enter') this.sendMessage();
         });
 
-        // Escutar por novas mensagens
         this.chatRef.on('child_added', (snapshot) => {
             this.displayMessage(snapshot.val());
         });
@@ -379,7 +401,6 @@ class ChatWidget {
     }
 }
 
-// Inicializar o chat
 document.addEventListener('DOMContentLoaded', () => {
     window.chatWidget = new ChatWidget();
 });
@@ -391,10 +412,8 @@ class AdminDashboard {
     }
 
     async setupDashboard() {
-        // Configurar contador de visitantes
         this.visitorCounter.setupAdminCounter();
 
-        // Obter estatísticas detalhadas
         const stats = await this.visitorCounter.getVisitorStats();
         if (stats) {
             this.updateVisitorStats(stats);
@@ -402,17 +421,72 @@ class AdminDashboard {
     }
 
     updateVisitorStats(stats) {
-        // Atualizar estatísticas adicionais se necessário
         console.log('Total de visitantes:', stats.total);
-        // Você pode adicionar mais visualizações de dados aqui
     }
 }
 
-// Inicializar o dashboard quando a página carregar
 document.addEventListener('DOMContentLoaded', () => {
     const dashboard = new AdminDashboard();
 });
 
 function voltarLogin() {
     window.location.href = 'login.html';
+}
+
+async function limparVisitantes() {
+    const isMaster = sessionStorage.getItem('isMaster') === 'true';
+    
+    if (!isMaster) {
+        Swal.fire({
+            title: 'Erro!',
+            text: 'Você não tem permissão para realizar esta ação.',
+            icon: 'error',
+            timer: 1500,
+            showConfirmButton: false,
+            position: 'center'
+        });
+        return;
+    }
+
+    try {
+        const result = await Swal.fire({
+            title: 'Tem certeza?',
+            text: "Você irá zerar o contador de visitantes!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sim, zerar!',
+            cancelButtonText: 'Cancelar'
+        });
+
+        if (result.isConfirmed) {
+            const db = firebase.database();
+            await db.ref('visitors').set(0);
+            
+            Swal.fire({
+                title: 'Sucesso!',
+                text: 'Contador de visitantes zerado!',
+                icon: 'success',
+                timer: 1500,
+                showConfirmButton: false,
+                position: 'center'
+            });
+
+            const visitorCountElement = document.querySelector('.visitor-count');
+            if (visitorCountElement) {
+                visitorCountElement.textContent = '0';
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao limpar visitantes:', error);
+        Swal.fire({
+            title: 'Erro!',
+            text: 'Erro ao zerar contador de visitantes: ' + error.message,
+            icon: 'error',
+            timer: 1500,
+            showConfirmButton: false,
+            position: 'center'
+        });
+    }
 } 

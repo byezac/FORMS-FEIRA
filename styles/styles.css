@@ -38,28 +38,31 @@ header {
 
 .image-gallery {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     align-items: center;
-    gap: 2rem;
-    padding: 1.5rem;
-    margin: 2rem auto;
+    gap: 10px;
+    padding: 15px;
+    margin: 1rem auto;
     max-width: 900px;
     background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
     box-shadow: 0 8px 32px rgba(26, 115, 232, 0.1);
+    flex-wrap: nowrap;
 }
 
 .image-container {
-    flex: 1;
-    max-width: 150px;
-    padding: 0.5rem;
+    flex: 0 1 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 5px;
+    width: 33%;
+    min-width: 0;
 }
 
 .gallery-image {
-    width: 100%;
-    height: auto;
+    width: auto;
+    height: 60px;
     object-fit: contain;
     transition: transform 0.3s ease;
 }
@@ -258,15 +261,17 @@ form {
 
 @media (max-width: 768px) {
     .image-gallery {
-        flex-wrap: nowrap;
-        gap: 1rem;
-        padding: 1rem;
-        overflow-x: auto;
+        flex-direction: row !important;
+        padding: 10px;
+        gap: 5px;
     }
 
     .image-container {
-        flex: 1;
-        max-width: 150px;
+        width: 33%;
+    }
+
+    .gallery-image {
+        height: 40px;
     }
 
     .rating-item {
@@ -310,8 +315,17 @@ form {
 }
 
 @media (max-width: 480px) {
+    .image-gallery {
+        gap: 0.5rem;
+        padding: 0.8rem;
+    }
+
     .image-container {
-        flex: 1;
+        max-width: 100px;
+    }
+
+    .gallery-image {
+        height: 30px;
     }
 }
 
@@ -674,4 +688,54 @@ input, select, textarea {
 ::placeholder {
     font-family: 'Poppins', sans-serif;
     font-weight: 400;
+} 
+
+/* Estilos gerais responsivos */
+@media (max-width: 768px) {
+    header {
+        padding: 10px;
+    }
+
+    .image-gallery {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .image-container {
+        width: 80%;
+        max-width: 300px;
+    }
+
+    .header-content h1 {
+        font-size: 1.5em;
+    }
+
+    .subtitle {
+        font-size: 0.9em;
+    }
+
+    main {
+        padding: 15px;
+    }
+
+    form {
+        width: 100%;
+        padding: 15px;
+    }
+
+    .rating-group h3 {
+        font-size: 1em;
+    }
+
+    .stars label {
+        font-size: 2em;
+    }
+
+    .button-group {
+        flex-direction: column;
+    }
+
+    .submit-btn {
+        width: 100%;
+    }
 } 
